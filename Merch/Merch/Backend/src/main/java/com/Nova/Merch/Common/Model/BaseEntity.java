@@ -1,4 +1,4 @@
-package com.Nova.Merch.Common.Model
+package com.Nova.Merch.Common.Model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.GenerativeValue;
