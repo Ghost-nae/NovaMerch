@@ -1,4 +1,4 @@
-package com.Nova.Merch.Identity.Entity
+package com.Nova.Merch.Identity.Entity;
 
 import com.Nova.Merch.Common.Model.BaseEntity;
 import com.Nova.Merch.Identity.Model.IdentityStatus;
