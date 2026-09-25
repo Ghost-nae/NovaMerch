@@ -1,6 +1,6 @@
 package com.Nova.Merch.Security.Jwt;
 
-import com.novagroup.novamerch.identity.entity.Identity;
+import com.Nova.Merch.Identity.Entity.Identity;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
