@@ -2,6 +2,8 @@ package com.Nova.Merch.Tenant.Entity;
 
 import com.Nova.Merch.Common.Model.BaseEntity;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
