@@ -4,6 +4,7 @@ import com.Nova.Merch.Common.Model.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.AccessLevel
 
 @Entity
 @Getter
