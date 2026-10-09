@@ -13,7 +13,7 @@ import java.util.UUID;
 @MappedSuperclass
   public abstract class BaseEntity {
     @Id
-    @GenerativeValue
+    @GeneratedValue
     private UUID id;
 
     @Column(nullable = false, updatable = false)
