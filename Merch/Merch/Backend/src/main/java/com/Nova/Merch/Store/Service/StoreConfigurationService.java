@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 
 @Service
-@RequiredArgsContructor
+@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class StoreConfigurationService{
 
