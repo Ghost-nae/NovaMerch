@@ -19,7 +19,7 @@ public class Tenant extends BaseEntity {
   @Column(nullable = false, length = 150)
   private String name;
 
-  @Coilumn(nullable = false, length = 50)
+  @Column(nullable = false, length = 50)
   private String code;
 
   @Enumerated(EnumType.STRING)
