@@ -18,7 +18,7 @@ public class JwtService {
 
   public JwtService(JwtEncoder jwtEncoder, @Value("${jwt.access-token-expiration}") Duration accessTokenExpiration) {
     this.jwtEncoder = jwtEncoder;
-    this.accessTokenExpiration;
+    this.accessTokenExpiration = accessTokenExpiration;
   }
 
   public String generateAccessToken(Identity identity) {
