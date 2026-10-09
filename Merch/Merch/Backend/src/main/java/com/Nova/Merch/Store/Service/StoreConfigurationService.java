@@ -20,7 +20,7 @@ public class StoreConfigurationService{
   public StoreConfiguration getConfiguration(UUID storeId) {
     return storeConfigurationRepository
       .findByStore_Id(storeId)
-      .orElseThrow(()
+      .orElseThrow(() ->
                   new IllegalArgumentException(
                     "Store configuration not found: " + storeId
                   )
