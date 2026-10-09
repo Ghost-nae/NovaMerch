@@ -36,7 +36,7 @@ public class JwtService {
     
     return jwtEncoder
       .encode(JwtEncoderParameters.from(claims))
-      .getTokenValue()
+      .getTokenValue();
   }
 
   public long getAccessTokenExpirationSeconds() {
