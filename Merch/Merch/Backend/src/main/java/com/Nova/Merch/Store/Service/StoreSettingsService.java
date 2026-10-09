@@ -1,6 +1,6 @@
 package com.Nova.Merch.Store.Service;
 
-import com.Nova.Merch.Store.Entity.StoreSettings;
+import com.Nova.Merch.Store.Entity.Store;
 import com.Nova.Merch.Store.Repository.StoreSettingsRepository;
 import lombok.RequiredArgsConstructor;
 
