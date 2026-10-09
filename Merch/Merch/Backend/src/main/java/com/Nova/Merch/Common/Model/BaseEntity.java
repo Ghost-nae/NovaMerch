@@ -2,6 +2,7 @@ package com.Nova.Merch.Common.Model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.GenerativeValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PrePersist;
@@ -13,7 +14,7 @@ import java.util.UUID;
 @MappedSuperclass
   public abstract class BaseEntity {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(nullable = false, updatable = false)
