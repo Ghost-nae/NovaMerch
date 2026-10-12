@@ -19,7 +19,24 @@ CREATE TABLE tenant_memberships (
         REFERENCES tenants(id),
 
     CONSTRAINT uk_tenant_membership_identity_tenant
-        UNIQUE (identity_id, tenant_id)
+        UNIQUE (identity_id, tenant_id),
+
+    CONSTRAINT chk_tenant_membership_role
+        CHECK (role IN (
+            'TENANT_OWNER',
+            'TENANT_ADMIN',
+            'STORE_MANAGER',
+            'STORE_STAFF',
+            'VIEWER'
+        )),
+
+    CONSTRAINT chk_tenant_membership_status
+        CHECK (status IN (
+            'INVITED',
+            'ACTIVE',
+            'SUSPENDED',
+            'REVOKED'
+        ))
 );
 
 CREATE INDEX idx_tenant_memberships_tenant_id
