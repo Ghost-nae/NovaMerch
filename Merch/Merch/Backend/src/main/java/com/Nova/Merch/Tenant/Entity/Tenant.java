@@ -33,4 +33,10 @@ public class Tenant extends BaseEntity {
     this.code = normalizeCode(code);
     this.status = TenantStatus.PENDING;
   }
+
+  
+private static String normalizeCode(String code) {
+    return code.trim().toUpperCase(java.util.Locale.ROOT);
+}
+
 }
