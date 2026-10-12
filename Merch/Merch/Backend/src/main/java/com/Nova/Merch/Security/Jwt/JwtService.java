@@ -28,7 +28,7 @@ public class JwtService {
       .builder()
       .issuer("novamerch")
       .subject(identity.getId().toString())
-      .issueAt(now)
+      .issuedAt(now)
       .expiresAt(now.plus(accessTokenExpiration))
       .id(UUID.randomUUID().toString())
       .claim("email", identity.getEmail())
