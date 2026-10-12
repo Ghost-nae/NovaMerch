@@ -6,6 +6,7 @@ import com.Nova.Merch.Identity.Entity.Identity;
 import com.Nova.Merch.Identity.Model.IdentityStatus;
 import com.Nova.Merch.Identity.Repository.IdentityRepository;
 import com.Nova.Merch.Security.Jwt.JwtService;
+
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
@@ -17,24 +18,26 @@ import java.util.Locale;
 
 @Service
 public class AuthenticationService {
-  private final IdentityRepository identityRepository;
-  private final PasswordEncoder passwordEncoder;
-  private final JwtService jwtService;
 
-  public AuthenticationService (
-    IdentityRepository identityRepository,
-    PasswordEncoder passwordEncoder,
-    JwtService jwtService
-  ) {
-    this.identityRepository = identityRepository;
-    this.passwordEncoder = passwordEncoder;
-    this.jwtService = jwtService;
-  }
+    private final IdentityRepository identityRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
-  public LoginRequest login(LoginRequest request) {
-    String normalizedEmail = normalizedEmail(request.email());
-    
-  Identity identity = identityRepository
+    public AuthenticationService(
+            IdentityRepository identityRepository,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService
+    ) {
+        this.identityRepository = identityRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
+    }
+
+    public LoginResponse login(LoginRequest request) {
+
+        String normalizedEmail = normalizeEmail(request.email());
+
+        Identity identity = identityRepository
                 .findByEmail(normalizedEmail)
                 .orElseThrow(() ->
                         new BadCredentialsException("Invalid email or password")
