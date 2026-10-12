@@ -1,0 +1,2 @@
+ALTER TABLE store_themes
+ADD COLUMN IF NOT EXISTS accent_color VARCHAR(255);
