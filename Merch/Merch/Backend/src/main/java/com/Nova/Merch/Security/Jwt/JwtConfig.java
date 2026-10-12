@@ -1,15 +1,17 @@
 package com.Nova.Merch.Security.Jwt;
 
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.jwt.*;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -17,49 +19,46 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
-import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.jwk.RSAKey;
-import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
-
-
 @Configuration
 public class JwtConfig {
-  @Value("${jwt.private-key}")
-  private Resource privateKeyResource;
 
-  @Value("${jwt.public-key}")
-  private Resource publicKeyResource;
+    @Value("${jwt.private-key}")
+    private Resource privateKeyResource;
 
-  @Bean
-  public JwtEncoder jwtEncoder() throws Exception {
-    RSAPublicKey publicKey = readPublicKey();
-    RSAPrivateKey privateKey = readPrivateKey();
+    @Value("${jwt.public-key}")
+    private Resource publicKeyResource;
 
-    RSAKey rsaKey = new RSAKey.Builder(publicKey)
-        .privateKey(privateKey)
-        .build();
+    @Bean
+    public JwtEncoder jwtEncoder() throws Exception {
 
-    JWKSet jwkSet = new JWKSet(rsaKey);
-    return new NimbusJwtEncoder(
-      new ImmutableJWKSet<>(jwkSet)
-    );
-  }
+        RSAPublicKey publicKey = readPublicKey();
+        RSAPrivateKey privateKey = readPrivateKey();
 
-  @Bean
-  public JwtDecoder jwtDecoder() throws Exception {
-    return NimbusJwtDecoder
-      .withPublicKey(readPublicKey())
-      .build();
-  }
+        RSAKey rsaKey = new RSAKey.Builder(publicKey)
+                .privateKey(privateKey)
+                .build();
 
-  private RSAPublicKey readPublicKey() throws Exception {
+        JWKSet jwkSet = new JWKSet(rsaKey);
 
-        String key = readKey(publicKeyResource)
-                .replace("-----BEGIN PUBLIC KEY-----", "")
-                .replace("-----END PUBLIC KEY-----", "")
-                .replaceAll("\\s", "");
+        return new NimbusJwtEncoder(
+                new ImmutableJWKSet<>(jwkSet)
+        );
+    }
 
-        byte[] decoded = Base64.getDecoder().decode(key);
+    @Bean
+    public JwtDecoder jwtDecoder() throws Exception {
+
+        return NimbusJwtDecoder
+                .withPublicKey(readPublicKey())
+                .build();
+    }
+
+    private RSAPublicKey readPublicKey() throws Exception {
+
+        byte[] decoded = readPem(
+                publicKeyResource,
+                "PUBLIC KEY"
+        );
 
         X509EncodedKeySpec keySpec =
                 new X509EncodedKeySpec(decoded);
@@ -71,12 +70,10 @@ public class JwtConfig {
 
     private RSAPrivateKey readPrivateKey() throws Exception {
 
-        String key = readKey(privateKeyResource)
-                .replace("-----BEGIN PRIVATE KEY-----", "")
-                .replace("-----END PRIVATE KEY-----", "")
-                .replaceAll("\\s", "");
-
-        byte[] decoded = Base64.getDecoder().decode(key);
+        byte[] decoded = readPem(
+                privateKeyResource,
+                "PRIVATE KEY"
+        );
 
         PKCS8EncodedKeySpec keySpec =
                 new PKCS8EncodedKeySpec(decoded);
@@ -86,9 +83,36 @@ public class JwtConfig {
                 .generatePrivate(keySpec);
     }
 
-    private String readKey(Resource resource) throws Exception {
+    private byte[] readPem(
+            Resource resource,
+            String keyType
+    ) throws Exception {
+
+        String pem;
+
         try (InputStream inputStream = resource.getInputStream()) {
-            return new String(inputStream.readAllBytes());
+            pem = new String(
+                    inputStream.readAllBytes(),
+                    StandardCharsets.UTF_8
+            );
         }
+
+        String beginMarker = "-----BEGIN " + keyType + "-----";
+        String endMarker = "-----END " + keyType + "-----";
+
+        if (!pem.contains(beginMarker) || !pem.contains(endMarker)) {
+            throw new IllegalArgumentException(
+                    "Invalid PEM format for " + keyType
+            );
+        }
+
+        String base64Content = pem
+                .substring(
+                        pem.indexOf(beginMarker) + beginMarker.length(),
+                        pem.indexOf(endMarker)
+                )
+                .replaceAll("\\s", "");
+
+        return Base64.getDecoder().decode(base64Content);
     }
 }
