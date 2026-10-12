@@ -39,7 +39,7 @@ public class JwtConfig {
         .privateKey(privateKey)
         .build();
 
-    JWKset jwkSet = new JWKSet(rsaKey);
+    JWKSet jwkSet = new JWKSet(rsaKey);
     return new NimbusJwtEncoder(
       new ImmutableJWKSet<>(jwkSet)
     );
