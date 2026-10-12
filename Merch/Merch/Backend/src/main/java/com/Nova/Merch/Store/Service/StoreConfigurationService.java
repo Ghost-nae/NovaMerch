@@ -29,7 +29,7 @@ public class StoreConfigurationService{
 
   public boolean configurationExists(UUID storeId) {
     return storeConfigurationRepository
-      .existsByStore_id(storeId);
+      .existsByStore_Id(storeId);
   }
   
   @Transactional
