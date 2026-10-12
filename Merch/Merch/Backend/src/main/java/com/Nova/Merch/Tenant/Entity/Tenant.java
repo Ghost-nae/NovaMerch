@@ -3,8 +3,13 @@ package com.Nova.Merch.Tenant.Entity;
 import com.Nova.Merch.Common.Model.BaseEntity;
 import com.Nova.Merch.Tenant.Model.TenantStatus;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.AccessLevel;
 
 @Entity
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED
 @Table(
   name = "Tenants",
   uniqueConstraints = {
@@ -25,8 +30,6 @@ public class Tenant extends BaseEntity {
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 30)
   private TenantStatus status;
-
-  protected Tenant() {}
 
   public Tenant(String name, String code) {
     this.name = name;
