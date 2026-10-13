@@ -1,0 +1,885 @@
+{
+  "info": {
+    "name": "NovaMerch API - Smoke & Auth Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Automated API tests for the NovaMerch backend. Covers health, login, validation and access control - the only features implemented so far."
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test(\"Responds within 2 seconds\", () => pm.expect(pm.response.responseTime).to.be.below(2000));"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Smoke",
+      "item": [
+        {
+          "name": "TC01 - Health check is UP",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "The service is running and can reach its database."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Status is UP\", () => pm.expect(pm.response.json().status).to.eql(\"UP\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 Login - positive",
+      "item": [
+        {
+          "name": "TC02 - Login with valid credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Happy path. Saves the token into the environment as {{accessToken}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{validEmail}}\",\n  \"password\": \"{{validPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Returns an access token\", () => pm.expect(body.accessToken).to.be.a(\"string\").and.not.empty);",
+                  "pm.test(\"Token type is Bearer\", () => pm.expect(body.tokenType).to.eql(\"Bearer\"));",
+                  "pm.test(\"Token expires in 60 minutes (3600s)\", () => pm.expect(body.expiresIn).to.eql(3600));",
+                  "pm.test(\"Token looks like a JWT (3 parts)\", () => pm.expect(body.accessToken.split(\".\").length).to.eql(3));",
+                  "pm.test(\"Password is not echoed back\", () => pm.expect(pm.response.text()).to.not.include(pm.environment.get(\"validPassword\")));",
+                  "// Save the token so later requests can use it",
+                  "pm.environment.set(\"accessToken\", body.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC03 - Login email is case/space insensitive",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "The service trims and lower-cases the email, so ' USER@X.COM ' should still log in.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"  {{validEmailUpper}}  \",\n  \"password\": \"{{validPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Returns an access token\", () => pm.expect(pm.response.json().accessToken).to.be.a(\"string\").and.not.empty);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set(\"validEmailUpper\", (pm.environment.get(\"validEmail\") || \"\").toUpperCase());"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 Login - negative & validation",
+      "item": [
+        {
+          "name": "TC04 - Wrong password is rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{validEmail}}\",\n  \"password\": \"WrongPassword123!\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"No access token is returned\", () => { let b = {}; try { b = pm.response.json(); } catch (e) {} pm.expect(b.accessToken).to.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC05 - Unknown email is rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Should look identical to TC04 so attackers can't tell which emails exist.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nobody-{{$randomInt}}@example.com\",\n  \"password\": \"Whatever123!\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"No access token is returned\", () => { let b = {}; try { b = pm.response.json(); } catch (e) {} pm.expect(b.accessToken).to.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC06 - Missing email returns 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"Whatever123!\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"No access token is returned\", () => { let b = {}; try { b = pm.response.json(); } catch (e) {} pm.expect(b.accessToken).to.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC07 - Invalid email format returns 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"Whatever123!\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"No access token is returned\", () => { let b = {}; try { b = pm.response.json(); } catch (e) {} pm.expect(b.accessToken).to.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC08 - Missing password returns 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{validEmail}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"No access token is returned\", () => { let b = {}; try { b = pm.response.json(); } catch (e) {} pm.expect(b.accessToken).to.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC09 - Blank password returns 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{validEmail}}\",\n  \"password\": \"   \"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"No access token is returned\", () => { let b = {}; try { b = pm.response.json(); } catch (e) {} pm.expect(b.accessToken).to.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC10 - Empty body returns 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"No access token is returned\", () => { let b = {}; try { b = pm.response.json(); } catch (e) {} pm.expect(b.accessToken).to.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC11 - Malformed JSON returns 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"email\": "
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"No access token is returned\", () => { let b = {}; try { b = pm.response.json(); } catch (e) {} pm.expect(b.accessToken).to.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 Access control",
+      "item": [
+        {
+          "name": "TC12 - Protected endpoint without token returns 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants"
+              ]
+            },
+            "description": "Every endpoint outside /api/v1/auth/** and /actuator/health must need a token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC13 - Protected endpoint with fake token returns 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer this.is.fake"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC14 - Valid token is accepted (not 401)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants"
+              ]
+            },
+            "description": "Endpoint isn't built yet, so 404 is fine for now; the point is the token itself is accepted."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Token is accepted (status is not 401)\", () => pm.expect(pm.response.code).to.not.eql(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC15 - Other actuator endpoints are not public",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/env",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "env"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Not publicly readable\", () => pm.expect(pm.response.code).to.be.oneOf([401, 403, 404]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 Account status (needs test accounts)",
+      "item": [
+        {
+          "name": "TC16 - LOCKED account cannot log in (correct password)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{lockedEmail}}\",\n  \"password\": \"{{lockedPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"lockedEmail\")) { pm.test(\"SKIPPED - set lockedEmail in the environment\", () => {}); return; }",
+                  "pm.test(\"Status code is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"No access token is returned\", () => { let b = {}; try { b = pm.response.json(); } catch (e) {} pm.expect(b.accessToken).to.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC17 - LOCKED account + WRONG password gives generic error",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "RISK: the code checks account status BEFORE the password, so a wrong password may reveal 'Account is locked'. That lets attackers find real accounts.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{lockedEmail}}\",\n  \"password\": \"WrongPassword123!\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"lockedEmail\")) { pm.test(\"SKIPPED - set lockedEmail in the environment\", () => {}); return; }",
+                  "pm.test(\"Status code is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"No access token is returned\", () => { let b = {}; try { b = pm.response.json(); } catch (e) {} pm.expect(b.accessToken).to.be.undefined; });",
+                  "pm.test(\"Does not reveal account status\", () => { const t = pm.response.text().toLowerCase(); [\"locked\",\"disabled\",\"verification\",\"not active\"].forEach(w => pm.expect(t).to.not.include(w)); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC18 - DISABLED account cannot log in (correct password)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{disabledEmail}}\",\n  \"password\": \"{{disabledPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"disabledEmail\")) { pm.test(\"SKIPPED - set disabledEmail in the environment\", () => {}); return; }",
+                  "pm.test(\"Status code is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"No access token is returned\", () => { let b = {}; try { b = pm.response.json(); } catch (e) {} pm.expect(b.accessToken).to.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC19 - DISABLED account + WRONG password gives generic error",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "RISK: the code checks account status BEFORE the password, so a wrong password may reveal 'Account is locked'. That lets attackers find real accounts.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{disabledEmail}}\",\n  \"password\": \"WrongPassword123!\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"disabledEmail\")) { pm.test(\"SKIPPED - set disabledEmail in the environment\", () => {}); return; }",
+                  "pm.test(\"Status code is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"No access token is returned\", () => { let b = {}; try { b = pm.response.json(); } catch (e) {} pm.expect(b.accessToken).to.be.undefined; });",
+                  "pm.test(\"Does not reveal account status\", () => { const t = pm.response.text().toLowerCase(); [\"locked\",\"disabled\",\"verification\",\"not active\"].forEach(w => pm.expect(t).to.not.include(w)); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC20 - PENDING_VERIFICATION account cannot log in (correct password)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{pendingEmail}}\",\n  \"password\": \"{{pendingPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"pendingEmail\")) { pm.test(\"SKIPPED - set pendingEmail in the environment\", () => {}); return; }",
+                  "pm.test(\"Status code is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"No access token is returned\", () => { let b = {}; try { b = pm.response.json(); } catch (e) {} pm.expect(b.accessToken).to.be.undefined; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TC21 - PENDING_VERIFICATION account + WRONG password gives generic error",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "RISK: the code checks account status BEFORE the password, so a wrong password may reveal 'Account is locked'. That lets attackers find real accounts.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{pendingEmail}}\",\n  \"password\": \"WrongPassword123!\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"pendingEmail\")) { pm.test(\"SKIPPED - set pendingEmail in the environment\", () => {}); return; }",
+                  "pm.test(\"Status code is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"No access token is returned\", () => { let b = {}; try { b = pm.response.json(); } catch (e) {} pm.expect(b.accessToken).to.be.undefined; });",
+                  "pm.test(\"Does not reveal account status\", () => { const t = pm.response.text().toLowerCase(); [\"locked\",\"disabled\",\"verification\",\"not active\"].forEach(w => pm.expect(t).to.not.include(w)); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
