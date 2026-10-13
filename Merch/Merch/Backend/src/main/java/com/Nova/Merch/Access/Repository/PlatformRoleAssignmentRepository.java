@@ -17,4 +17,6 @@ public interface PlatformRoleAssignmentRepository
             UUID identityId,
             PlatformRole role
     );
+                
+    boolean existsByRole(PlatformRole role);    
 }
