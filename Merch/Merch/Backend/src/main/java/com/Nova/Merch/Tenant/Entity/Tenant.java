@@ -9,7 +9,7 @@ import lombok.AccessLevel;
 
 @Entity
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
   name = "Tenants",
   uniqueConstraints = {
