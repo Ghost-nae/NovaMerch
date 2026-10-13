@@ -39,7 +39,7 @@ public class Tenant extends BaseEntity {
 
   
 private static String normalizeCode(String code) {
-    return code.trim().toUpperCase(java.util.Locale.ROOT);
+    return code.trim().toLowerCase(java.util.Locale.ROOT);
 }
 
 }
