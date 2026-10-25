@@ -35,4 +35,16 @@ public class TenantController {
                 .status(HttpStatus.CREATED)
                 .body(TenantResponse.from(tenant));
     }
+
+    @PatchMapping("/{tenantId}/activate")
+    public ResponseEntity<TenantResponse> activateTenant(
+            @PathVariable UUID tenantId
+    ) {
+        Tenant tenant = tenantActivationService
+                .activateTenant(tenantId);
+
+        return ResponseEntity.ok(
+                TenantResponse.from(tenant)
+        );
+    }
 }
