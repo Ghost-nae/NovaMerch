@@ -22,7 +22,7 @@ public class TenantController {
             TenantProvisioningService tenantProvisioningService, TenantActivationService tenantActivationService
     ) {
         this.tenantProvisioningService = tenantProvisioningService;
-        this.TenantActivationService = tenantActivationService;
+        this.tenantActivationService = tenantActivationService;
     }
 
     @PostMapping
