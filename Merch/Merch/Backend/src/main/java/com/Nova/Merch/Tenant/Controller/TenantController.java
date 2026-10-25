@@ -4,7 +4,7 @@ import com.Nova.Merch.Tenant.DTO.CreateTenantRequest;
 import com.Nova.Merch.Tenant.DTO.TenantResponse;
 import com.Nova.Merch.Tenant.Entity.Tenant;
 import com.Nova.Merch.Tenant.Service.TenantProvisioningService;
-
+import com.Nova.Merch.Tenant.Service.TenantActivationService;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -16,11 +16,13 @@ import org.springframework.web.bind.annotation.*;
 public class TenantController {
 
     private final TenantProvisioningService tenantProvisioningService;
+    private final TenantActivationService tenantActivationService;
 
     public TenantController(
-            TenantProvisioningService tenantProvisioningService
+            TenantProvisioningService tenantProvisioningService, TenantActivationService tenantActivationService
     ) {
         this.tenantProvisioningService = tenantProvisioningService;
+        this.TenantActivationService = tenantActivationService;
     }
 
     @PostMapping
