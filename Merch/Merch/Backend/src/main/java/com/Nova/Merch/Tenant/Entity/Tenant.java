@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.AccessLevel;
+import com.Nova.Merch.Tenant.Model.TenantStatus;
 
 @Entity
 @Getter
@@ -42,4 +43,14 @@ private static String normalizeCode(String code) {
     return code.trim().toLowerCase(java.util.Locale.ROOT);
 }
 
+ public void activate() {
+
+    if (this.status != TenantStatus.PENDING) {
+        throw new IllegalStateException(
+                "Only PENDING tenants can be activated"
+        );
+    }
+
+    this.status = TenantStatus.ACTIVE;
+} 
 }
