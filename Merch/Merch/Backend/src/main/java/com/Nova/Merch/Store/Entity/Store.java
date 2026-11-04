@@ -70,8 +70,8 @@ public class Store extends BaseEntity {
     }
 
     private static String normalizeCode(String code) {
-        return code == null
-                ? null
-                : code.trim().toUpperCase();
+       return code == null
+            ? null
+            : code.trim().toLowerCase(java.util.Locale.ROOT);
     }
 }
