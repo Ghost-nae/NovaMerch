@@ -1,6 +1,7 @@
 package com.Nova.Merch.Identity.Entity;
 
 import com.Nova.Merch.Common.Model.BaseEntity;
+import com.Nova.Merch.Access.Entity.TenantMembership;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -27,6 +28,10 @@ public class MerchantAccountSetupToken extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "identity_id", nullable = false)
     private Identity identity;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tenant_membership_id", nullable = false)
+    private TenantMembership tenantMembership;
 
     @Column(name = "token_hash", nullable = false, length = 64)
     private String tokenHash;
