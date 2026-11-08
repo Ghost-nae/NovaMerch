@@ -43,13 +43,22 @@ public class MerchantAccountSetupToken extends BaseEntity {
     private Instant usedAt;
 
     public MerchantAccountSetupToken(
-            Identity identity,
-            String tokenHash,
-            Instant expiresAt
+        Identity identity,
+        TenantMembership tenantMembership,
+        String tokenHash,
+        Instant expiresAt
     ) {
         this.identity = Objects.requireNonNull(identity);
+        this.tenantMembership = Objects.requireNonNull(tenantMembership);
         this.tokenHash = Objects.requireNonNull(tokenHash);
         this.expiresAt = Objects.requireNonNull(expiresAt);
+    
+        if (!tenantMembership.getIdentity().getId()
+                .equals(identity.getId())) {
+            throw new IllegalArgumentException(
+                    "Tenant membership does not belong to this identity"
+            );
+        }
     }
 
     public boolean isExpired() {
