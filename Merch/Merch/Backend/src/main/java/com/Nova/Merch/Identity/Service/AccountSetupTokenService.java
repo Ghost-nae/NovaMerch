@@ -3,6 +3,7 @@ package com.Nova.Merch.Identity.Service;
 import com.Nova.Merch.Identity.Entity.Identity;
 import com.Nova.Merch.Identity.Entity.MerchantAccountSetupToken;
 import com.Nova.Merch.Identity.Repository.MerchantAccountSetupTokenRepository;
+import com.Nova.Merch.Access.Entity.TenantMembership;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,28 +30,32 @@ public class AccountSetupTokenService {
     }
 
     @Transactional
-    public String createToken(Identity identity) {
-
+    public String createToken(
+            Identity identity,
+            TenantMembership tenantMembership
+    ) {
         byte[] randomBytes = new byte[32];
         secureRandom.nextBytes(randomBytes);
-
+    
         String rawToken = Base64.getUrlEncoder()
                 .withoutPadding()
                 .encodeToString(randomBytes);
-
+    
         String tokenHash = hashToken(rawToken);
-
+    
         MerchantAccountSetupToken setupToken =
                 new MerchantAccountSetupToken(
                         identity,
+                        tenantMembership,
                         tokenHash,
                         Instant.now().plus(24, ChronoUnit.HOURS)
                 );
-
+    
         tokenRepository.save(setupToken);
-
+    
         return rawToken;
     }
+
 
     public String hashToken(String rawToken) {
         try {
