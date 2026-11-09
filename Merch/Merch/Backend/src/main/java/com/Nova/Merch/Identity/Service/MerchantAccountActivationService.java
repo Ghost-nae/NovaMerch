@@ -10,6 +10,8 @@ import com.Nova.Merch.Identity.Repository.MerchantAccountSetupTokenRepository;
 import com.Nova.Merch.Identity.Repository.IdentityRepository;
 import com.Nova.Merch.Tenant.Model.TenantStatus;
 import com.Nova.Merch.Access.Repository.TenantMembershipRepository;
+import com.Nova.Merch.Tenant.Entity.Tenant;
+import com.Nova.Merch.Tenant.Repository.TenantRepository;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -23,18 +25,20 @@ public class MerchantAccountActivationService {
     private final PasswordEncoder passwordEncoder;
     private final IdentityRepository identityRepository;
     private final TenantMembershipRepository membershipRepository;
+    private final TenantRepository tenantRepository;
 
     public MerchantAccountActivationService(
             MerchantAccountSetupTokenRepository tokenRepository,
             AccountSetupTokenService tokenService,
             PasswordEncoder passwordEncoder, IdentityRepository identityRepository,
-            TenantMembershipRepository membershipRepository
+            TenantMembershipRepository membershipRepository, TenantRepository tenantRepository
     ) {
         this.tokenRepository = tokenRepository;
         this.tokenService = tokenService;
         this.passwordEncoder = passwordEncoder;
         this.identityRepository = identityRepository;
         this.membershipRepository = membershipRepository;
+        this.tenantRepository = tenantRepository;
     }
 
     
@@ -96,11 +100,21 @@ public class MerchantAccountActivationService {
             );
         }
     
-        if (membership.getTenant().getStatus() != TenantStatus.ACTIVE) {
+        
+        Tenant tenant = tenantRepository
+                .findByIdForUpdate(membership.getTenant().getId())
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Merchant tenant not found"
+                        )
+                );
+        
+        if (tenant.getStatus() != TenantStatus.ACTIVE) {
             throw new IllegalStateException(
                     "Merchant tenant is not active"
             );
         }
+
     
         identity.setPasswordHash(
                 passwordEncoder.encode(request.password())
