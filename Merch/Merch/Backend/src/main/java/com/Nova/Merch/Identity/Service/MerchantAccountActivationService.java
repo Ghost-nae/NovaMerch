@@ -9,6 +9,7 @@ import com.Nova.Merch.Identity.Model.IdentityStatus;
 import com.Nova.Merch.Identity.Repository.MerchantAccountSetupTokenRepository;
 import com.Nova.Merch.Identity.Repository.IdentityRepository;
 import com.Nova.Merch.Tenant.Model.TenantStatus;
+import com.Nova.Merch.Access.Repository.TenantMembershipRepository;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,16 +22,19 @@ public class MerchantAccountActivationService {
     private final AccountSetupTokenService tokenService;
     private final PasswordEncoder passwordEncoder;
     private final IdentityRepository identityRepository;
+    private final TenantMembershipRepository membershipRepository;
 
     public MerchantAccountActivationService(
             MerchantAccountSetupTokenRepository tokenRepository,
             AccountSetupTokenService tokenService,
-            PasswordEncoder passwordEncoder, IdentityRepository identityRepository
+            PasswordEncoder passwordEncoder, IdentityRepository identityRepository,
+            TenantMembershipRepository membershipRepository
     ) {
         this.tokenRepository = tokenRepository;
         this.tokenService = tokenService;
         this.passwordEncoder = passwordEncoder;
         this.identityRepository = identityRepository;
+        this.membershipRepository = membershipRepository;
     }
 
     
@@ -61,7 +65,17 @@ public class MerchantAccountActivationService {
                         )
                 );
     
-        TenantMembership membership = setupToken.getTenantMembership();
+            
+        TenantMembership membership = membershipRepository
+                .findByIdForUpdate(
+                        setupToken.getTenantMembership().getId()
+                )
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Merchant membership not found"
+                        )
+                );
+
     
         if (!membership.getIdentity().getId().equals(identity.getId())) {
             throw new IllegalStateException(
