@@ -4,6 +4,7 @@ import com.Nova.Merch.Identity.Entity.Identity;
 import com.Nova.Merch.Identity.Entity.MerchantAccountSetupToken;
 import com.Nova.Merch.Identity.Repository.MerchantAccountSetupTokenRepository;
 import com.Nova.Merch.Access.Entity.TenantMembership;
+import com.Nova.Merch.Identity.Repository.IdentityRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,11 +23,14 @@ public class AccountSetupTokenService {
 
     private final MerchantAccountSetupTokenRepository tokenRepository;
     private final SecureRandom secureRandom = new SecureRandom();
+    private final IdentityRepository identityRepository;
 
     public AccountSetupTokenService(
-            MerchantAccountSetupTokenRepository tokenRepository
+            MerchantAccountSetupTokenRepository tokenRepository,
+            IdentityRepository identityRepository
     ) {
         this.tokenRepository = tokenRepository;
+        this.identityRepository = identityRepository;
     }
 
     @Transactional
