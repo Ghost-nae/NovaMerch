@@ -34,7 +34,7 @@ public class TenantActivationService {
                 PlatformRole.PLATFORM_ADMIN
         );
 
-        Tenant tenant = tenantRepository.findById(tenantId)
+        Tenant tenant = tenantRepository.findByIdForUpdate(tenantId)
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
