@@ -38,6 +38,28 @@ public class AccountSetupTokenService {
             Identity identity,
             TenantMembership tenantMembership
     ) {
+        
+        Identity lockedIdentity = identityRepository
+                .findByIdForUpdate(identity.getId())
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Merchant identity not found"
+                        )
+                );
+        
+        if (!tenantMembership.getIdentity().getId()
+                .equals(lockedIdentity.getId())) {
+            throw new IllegalStateException(
+                    "Merchant membership does not belong to identity"
+            );
+        }
+        
+        tokenRepository
+                .findUnusedByMembershipIdForUpdate(
+                        tenantMembership.getId()
+                )
+                .forEach(MerchantAccountSetupToken::revoke);
+        
         byte[] randomBytes = new byte[32];
         secureRandom.nextBytes(randomBytes);
     
