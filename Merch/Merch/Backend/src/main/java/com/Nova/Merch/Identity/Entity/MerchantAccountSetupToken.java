@@ -82,4 +82,11 @@ public class MerchantAccountSetupToken extends BaseEntity {
 
         this.usedAt = Instant.now();
     }
+    
+    public void revoke() {
+        if (usedAt == null) {
+            this.usedAt = Instant.now();
+        }
+    }
+
 }
