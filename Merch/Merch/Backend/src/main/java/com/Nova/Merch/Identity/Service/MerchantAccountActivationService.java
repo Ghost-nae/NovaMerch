@@ -79,6 +79,22 @@ public class MerchantAccountActivationService {
                         )
                 );
 
+          // Lock the tenant.
+        Tenant tenant = tenantRepository
+                .findByIdForUpdate(membership.getTenant().getId())
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Merchant tenant not found"
+                        )
+                );
+
+        // Validate tenant status.
+        if (tenant.getStatus() != TenantStatus.ACTIVE) {
+            throw new IllegalStateException(
+                    "Merchant tenant is not active"
+            );
+        }
+
         // Step 5: Lock and revalidate the setup token.
         MerchantAccountSetupToken setupToken = tokenRepository
                 .findByTokenHashForUpdate(tokenHash)
@@ -128,22 +144,6 @@ public class MerchantAccountActivationService {
         if (membership.getStatus() != TenantMembershipStatus.INVITED) {
             throw new IllegalStateException(
                     "Merchant invitation is not active"
-            );
-        }
-
-        // Step 9: Lock the tenant.
-        Tenant tenant = tenantRepository
-                .findByIdForUpdate(membership.getTenant().getId())
-                .orElseThrow(() ->
-                        new IllegalStateException(
-                                "Merchant tenant not found"
-                        )
-                );
-
-        // Step 10: Validate tenant status.
-        if (tenant.getStatus() != TenantStatus.ACTIVE) {
-            throw new IllegalStateException(
-                    "Merchant tenant is not active"
             );
         }
 
