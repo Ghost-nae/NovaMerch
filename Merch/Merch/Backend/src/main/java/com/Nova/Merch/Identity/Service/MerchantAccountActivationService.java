@@ -67,7 +67,19 @@ public class MerchantAccountActivationService {
                         )
                 );
 
-        // Step 4: Lock and revalidate the setup token.
+       
+        // Step 4: Lock the tenant membership first.
+        TenantMembership membership = membershipRepository
+                .findByIdForUpdate(
+                        tokenReference.getTenantMembership().getId()
+                )
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Merchant membership not found"
+                        )
+                );
+
+        // Step 5: Lock and revalidate the setup token.
         MerchantAccountSetupToken setupToken = tokenRepository
                 .findByTokenHashForUpdate(tokenHash)
                 .orElseThrow(() ->
@@ -82,22 +94,20 @@ public class MerchantAccountActivationService {
             );
         }
 
-        if (!setupToken.getIdentity().getId().equals(identity.getId())) {
+        if (!setupToken.getIdentity().getId()
+                .equals(identity.getId())) {
             throw new IllegalStateException(
                     "Setup token identity mismatch"
             );
         }
 
-        // Step 5: Lock the invited tenant membership.
-        TenantMembership membership = membershipRepository
-                .findByIdForUpdate(
-                        setupToken.getTenantMembership().getId()
-                )
-                .orElseThrow(() ->
-                        new IllegalStateException(
-                                "Merchant membership not found"
-                        )
-                );
+        if (!setupToken.getTenantMembership().getId()
+                .equals(membership.getId())) {
+            throw new IllegalStateException(
+                    "Setup token membership mismatch"
+            );
+        }
+
 
         // Step 6: Validate membership ownership.
         if (!membership.getIdentity().getId().equals(identity.getId())) {
