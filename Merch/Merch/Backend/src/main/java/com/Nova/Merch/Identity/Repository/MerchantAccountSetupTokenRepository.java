@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 public interface MerchantAccountSetupTokenRepository
@@ -29,4 +30,17 @@ public interface MerchantAccountSetupTokenRepository
     Optional<MerchantAccountSetupToken> findByTokenHashForUpdate(
             @Param("tokenHash") String tokenHash
     );
+ 
+ @Lock(LockModeType.PESSIMISTIC_WRITE)
+ @Query("""
+        SELECT token
+        FROM MerchantAccountSetupToken token
+        WHERE token.tenantMembership.id = :membershipId
+          AND token.usedAt IS NULL
+          ORDER BY token.id
+ """)
+List<MerchantAccountSetupToken> findUnusedByMembershipIdForUpdate(
+        @Param("membershipId") UUID membershipId
+);
+            
 }
