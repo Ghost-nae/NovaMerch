@@ -1,11 +1,13 @@
 package com.Nova.Merch.Identity.Service;
 
+import com.Nova.Merch.Access.Entity.TenantMembership;
+import com.Nova.Merch.Access.Model.TenantMembershipStatus;
+import com.Nova.Merch.Access.Repository.TenantMembershipRepository;
 import com.Nova.Merch.Identity.Entity.Identity;
 import com.Nova.Merch.Identity.Entity.MerchantAccountSetupToken;
-import com.Nova.Merch.Identity.Repository.MerchantAccountSetupTokenRepository;
-import com.Nova.Merch.Access.Entity.TenantMembership;
-import com.Nova.Merch.Identity.Repository.IdentityRepository;
 import com.Nova.Merch.Identity.Model.IdentityStatus;
+import com.Nova.Merch.Identity.Repository.IdentityRepository;
+import com.Nova.Merch.Identity.Repository.MerchantAccountSetupTokenRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,15 +25,19 @@ import java.util.HexFormat;
 public class AccountSetupTokenService {
 
     private final MerchantAccountSetupTokenRepository tokenRepository;
-    private final SecureRandom secureRandom = new SecureRandom();
     private final IdentityRepository identityRepository;
+    private final TenantMembershipRepository membershipRepository;
+
+    private final SecureRandom secureRandom = new SecureRandom();
 
     public AccountSetupTokenService(
             MerchantAccountSetupTokenRepository tokenRepository,
-            IdentityRepository identityRepository
+            IdentityRepository identityRepository,
+            TenantMembershipRepository membershipRepository
     ) {
         this.tokenRepository = tokenRepository;
         this.identityRepository = identityRepository;
+        this.membershipRepository = membershipRepository;
     }
 
     @Transactional
@@ -57,22 +63,38 @@ public class AccountSetupTokenService {
             );
         }
 
-        // Step 3: Validate membership ownership.
-        if (!tenantMembership.getIdentity().getId()
+        // Step 3: Lock the tenant membership.
+        TenantMembership lockedMembership = membershipRepository
+                .findByIdForUpdate(tenantMembership.getId())
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Merchant membership not found"
+                        )
+                );
+
+        // Step 4: Validate membership ownership.
+        if (!lockedMembership.getIdentity().getId()
                 .equals(lockedIdentity.getId())) {
             throw new IllegalStateException(
                     "Merchant membership does not belong to identity"
             );
         }
 
-        // Step 4: Revoke previous unused setup tokens.
+        // Step 5: Validate membership status.
+        if (lockedMembership.getStatus() != TenantMembershipStatus.INVITED) {
+            throw new IllegalStateException(
+                    "Merchant membership is not eligible for setup"
+            );
+        }
+
+        // Step 6: Revoke previous unused setup tokens.
         tokenRepository
                 .findUnusedByMembershipIdForUpdate(
-                        tenantMembership.getId()
+                        lockedMembership.getId()
                 )
                 .forEach(MerchantAccountSetupToken::revoke);
 
-        // Step 5: Generate a secure random token.
+        // Step 7: Generate a secure random token.
         byte[] randomBytes = new byte[32];
         secureRandom.nextBytes(randomBytes);
 
@@ -80,19 +102,19 @@ public class AccountSetupTokenService {
                 .withoutPadding()
                 .encodeToString(randomBytes);
 
-        // Step 6: Hash the token before persistence.
+        // Step 8: Hash the token before persistence.
         String tokenHash = hashToken(rawToken);
 
-        // Step 7: Create a new setup token.
+        // Step 9: Create the replacement setup token.
         MerchantAccountSetupToken setupToken =
                 new MerchantAccountSetupToken(
                         lockedIdentity,
-                        tenantMembership,
+                        lockedMembership,
                         tokenHash,
                         Instant.now().plus(24, ChronoUnit.HOURS)
                 );
 
-        // Step 8: Save the token.
+        // Step 10: Persist the setup token.
         tokenRepository.save(setupToken);
 
         // Return the raw token for secure invitation delivery.
