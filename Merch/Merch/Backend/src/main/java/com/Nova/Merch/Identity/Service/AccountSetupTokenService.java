@@ -71,7 +71,7 @@ public class AccountSetupTokenService {
     
         MerchantAccountSetupToken setupToken =
                 new MerchantAccountSetupToken(
-                        identity,
+                        lockedIdentity,
                         tenantMembership,
                         tokenHash,
                         Instant.now().plus(24, ChronoUnit.HOURS)
