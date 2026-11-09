@@ -8,6 +8,9 @@ import com.Nova.Merch.Identity.Entity.MerchantAccountSetupToken;
 import com.Nova.Merch.Identity.Model.IdentityStatus;
 import com.Nova.Merch.Identity.Repository.IdentityRepository;
 import com.Nova.Merch.Identity.Repository.MerchantAccountSetupTokenRepository;
+import com.Nova.Merch.Tenant.Entity.Tenant;
+import com.Nova.Merch.Tenant.Model.TenantStatus;
+import com.Nova.Merch.Tenant.Repository.TenantRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,17 +30,20 @@ public class AccountSetupTokenService {
     private final MerchantAccountSetupTokenRepository tokenRepository;
     private final IdentityRepository identityRepository;
     private final TenantMembershipRepository membershipRepository;
+    private final TenantRepository tenantRepository;
 
     private final SecureRandom secureRandom = new SecureRandom();
 
     public AccountSetupTokenService(
             MerchantAccountSetupTokenRepository tokenRepository,
             IdentityRepository identityRepository,
-            TenantMembershipRepository membershipRepository
+            TenantMembershipRepository membershipRepository,
+            TenantRepository tenantRepository
     ) {
         this.tokenRepository = tokenRepository;
         this.identityRepository = identityRepository;
         this.membershipRepository = membershipRepository;
+        this.tenantRepository = tenantRepository;
     }
 
     @Transactional
@@ -87,14 +93,30 @@ public class AccountSetupTokenService {
             );
         }
 
-        // Step 6: Revoke previous unused setup tokens.
+        // Step 6: Lock the tenant.
+        Tenant tenant = tenantRepository
+                .findByIdForUpdate(lockedMembership.getTenant().getId())
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Merchant tenant not found"
+                        )
+                );
+
+        // Step 7: Validate tenant status.
+        if (tenant.getStatus() != TenantStatus.ACTIVE) {
+            throw new IllegalStateException(
+                    "Merchant tenant is not active"
+            );
+        }
+
+        // Step 8: Revoke previous unused setup tokens.
         tokenRepository
                 .findUnusedByMembershipIdForUpdate(
                         lockedMembership.getId()
                 )
                 .forEach(MerchantAccountSetupToken::revoke);
 
-        // Step 7: Generate a secure random token.
+        // Step 9: Generate a secure random token.
         byte[] randomBytes = new byte[32];
         secureRandom.nextBytes(randomBytes);
 
@@ -102,10 +124,10 @@ public class AccountSetupTokenService {
                 .withoutPadding()
                 .encodeToString(randomBytes);
 
-        // Step 8: Hash the token before persistence.
+        // Step 10: Hash the token before persistence.
         String tokenHash = hashToken(rawToken);
 
-        // Step 9: Create the replacement setup token.
+        // Step 11: Create the replacement setup token.
         MerchantAccountSetupToken setupToken =
                 new MerchantAccountSetupToken(
                         lockedIdentity,
@@ -114,7 +136,7 @@ public class AccountSetupTokenService {
                         Instant.now().plus(24, ChronoUnit.HOURS)
                 );
 
-        // Step 10: Persist the setup token.
+        // Step 12: Persist the setup token.
         tokenRepository.save(setupToken);
 
         // Return the raw token for secure invitation delivery.
