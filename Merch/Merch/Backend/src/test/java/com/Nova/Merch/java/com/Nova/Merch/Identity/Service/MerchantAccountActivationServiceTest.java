@@ -8,6 +8,14 @@ import org.mockito.InjectMocks;
 import static org.mockito.Mockito.when;
 import java.util.Optional;
 
+import com.Nova.Merch.Identity.DTO.CompleteMerchantSetupRequest;
+
+import static org.mockito.Mockito.verify;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.times;
+
 import com.Nova.Merch.Identity.Repository.MerchantAccountSetupTokenRepository;
 import com.Nova.Merch.Identity.Service.AccountSetupTokenService;
 import com.Nova.Merch.Identity.Repository.IdentityRepository;
@@ -103,7 +111,53 @@ class MerchantAccountActivationServiceTest {
         
         when(tokenRepository.findByTokenHashForUpdate(tokenHash))
             .thenReturn(Optional.of(setupToken));
+
+        when(passwordEncoder.encode("SecurePassword123!"))
+            .thenReturn("hashed-password");
+
+        CompleteMerchantSetupRequest request =
+            new CompleteMerchantSetupRequest(
+                rawToken,
+                "SecurePassword123!"
+            );
+
+        activationService.completeSetup(request);
         
-        MerchantAccountSetupToken setupToken = new MerchantAccountSetupToken();
-    }
+        // Verify the first activation succeeded
+        assertEquals(IdentityStatus.ACTIVE, identity.getStatus());
+        assertTrue(identity.isEmailVerified());
+        
+        assertEquals(
+            TenantMembershipStatus.ACTIVE,
+            membership.getStatus()
+        );
+        
+        assertTrue(setupToken.isUsed());
+        
+        assertEquals(
+            "hashed-password",
+            identity.getPasswordHash()
+        );
+        
+        // Attempt to activate the account again using the same token
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> activationService.completeSetup(request)
+        );
+        
+        // Verify the reused token was rejected
+        assertEquals(
+            "Invalid or expired setup token",
+            exception.getMessage()
+        );
+        
+        // Verify the account remains activated
+        assertEquals(IdentityStatus.ACTIVE, identity.getStatus());
+        assertEquals(TenantMembershipStatus.ACTIVE, membership.getStatus());
+        assertTrue(setupToken.isUsed());
+        
+        // Verify password encoding happened only once
+        verify(passwordEncoder, times(1))
+            .encode("SecurePassword123!");
+            }
 }
