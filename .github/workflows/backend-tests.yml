@@ -28,5 +28,23 @@ jobs:
           cache: maven
           cache-dependency-path: Merch/Merch/Backend/pom.xml
 
+      
+      - name: Generate test-only JWT keys
+        run: |
+          mkdir -p target/test-keys
+          openssl genpkey -algorithm RSA \
+            -pkeyopt rsa_keygen_bits:2048 \
+            -out target/test-keys/private.pem
+          openssl pkey \
+            -in target/test-keys/private.pem \
+            -pubout \
+            -out target/test-keys/public.pem
+
+      - name: Run backend tests
+        env:
+          JWT_PRIVATE_KEY: file:target/test-keys/private.pem
+          JWT_PUBLIC_KEY: file:target/test-keys/public.pem
+        run: mvn -B verify
+
       - name: Run backend tests
         run: mvn -B verify
