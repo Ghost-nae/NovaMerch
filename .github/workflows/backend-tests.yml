@@ -46,5 +46,3 @@ jobs:
           JWT_PUBLIC_KEY: file:target/test-keys/public.pem
         run: mvn -B verify
 
-      - name: Run backend tests
-        run: mvn -B verify
