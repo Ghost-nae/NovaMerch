@@ -12,7 +12,8 @@ import com.Nova.Merch.Identity.Repository.IdentityRepository;
 import com.Nova.Merch.Access.Repository.TenantMembershipRepository;
 import com.Nova.Merch.Tenant.Repository.TenantRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import com.Nova.Merch.Identity.Entity.Identity;
 import com.Nova.Merch.Identity.Entity.MerchantAccountSetupToken;
 import com.Nova.Merch.Identity.Model.IdentityStatus;
@@ -70,6 +71,19 @@ class MerchantAccountActivationServiceTest {
         ReflectionTestUtils.setField(tenant, "id", UUID.randomUUID());
         ReflectionTestUtils.setField(membership, "id", UUID.randomUUID());
 
+        String rawToken = "test-merchant-setup-token";
+        String tokenHash = "test-token-hash";
+        
+        Instant expiresAt = Instant.now().plus(24, ChronoUnit.HOURS);
+        
+        MerchantAccountSetupToken setupToken =
+            new MerchantAccountSetupToken(
+                identity,
+                membership,
+                tokenHash,
+                expiresAt
+            );
+        
         MerchantAccountSetupToken setupToken = new MerchantAccountSetupToken();
     }
 }
