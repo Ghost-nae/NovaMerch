@@ -5,6 +5,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.Mock;
 import org.mockito.InjectMocks;
+import static org.mockito.Mockito.when;
+import java.util.Optional;
 
 import com.Nova.Merch.Identity.Repository.MerchantAccountSetupTokenRepository;
 import com.Nova.Merch.Identity.Service.AccountSetupTokenService;
@@ -83,6 +85,24 @@ class MerchantAccountActivationServiceTest {
                 tokenHash,
                 expiresAt
             );
+
+        when(tokenService.hashToken(rawToken))
+            .thenReturn(tokenHash);
+        
+        when(tokenRepository.findByTokenHash(tokenHash))
+            .thenReturn(Optional.of(setupToken));
+
+        when(identityRepository.findByIdForUpdate(identity.getId()))
+            .thenReturn(Optional.of(identity));
+        
+        when(membershipRepository.findByIdForUpdate(membership.getId()))
+            .thenReturn(Optional.of(membership));
+        
+        when(tenantRepository.findByIdForUpdate(tenant.getId()))
+            .thenReturn(Optional.of(tenant));
+        
+        when(tokenRepository.findByTokenHashForUpdate(tokenHash))
+            .thenReturn(Optional.of(setupToken));
         
         MerchantAccountSetupToken setupToken = new MerchantAccountSetupToken();
     }
