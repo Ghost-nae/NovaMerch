@@ -19,7 +19,8 @@ import com.Nova.Merch.Identity.Model.IdentityStatus;
 import com.Nova.Merch.Access.Model.TenantRole;
 import com.Nova.Merch.Access.Entity.TenantMembership;
 import com.Nova.Merch.Access.Model.TenantMembershipStatus;
-
+import java.util.UUID;
+import org.springframework.test.util.ReflectionTestUtils;
 import com.Nova.Merch.Tenant.Entity.Tenant;
 import com.Nova.Merch.Tenant.Model.TenantStatus;
 
@@ -63,8 +64,12 @@ class MerchantAccountActivationServiceTest {
         TenantMembership membership = new TenantMembership(
             identity,
             tenant,
-            TenantRole.OWNER
+            TenantRole.TENANT_OWNER
         );
+        ReflectionTestUtils.setField(identity, "id", UUID.randomUUID());
+        ReflectionTestUtils.setField(tenant, "id", UUID.randomUUID());
+        ReflectionTestUtils.setField(membership, "id", UUID.randomUUID());
+
         MerchantAccountSetupToken setupToken = new MerchantAccountSetupToken();
     }
 }
