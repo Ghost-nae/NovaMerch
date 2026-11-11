@@ -21,6 +21,13 @@ import org.springframework.context.annotation.Import;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutionException;
+import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -110,6 +117,80 @@ class MerchantAccountActivationIntegrationTest {
             MerchantAccountSetupToken token = tokenRepository.findById(tokenId)
                     .orElseThrow();
 
+            assertEquals(IdentityStatus.ACTIVE, identity.getStatus());
+            assertTrue(identity.isEmailVerified());
+            assertEquals(TenantMembershipStatus.ACTIVE, membership.getStatus());
+            assertTrue(token.isUsed());
+        });
+    }
+
+    @Test
+    void shouldAllowOnlyOneOfTwoConcurrentActivations() throws Exception {
+        String unique = UUID.randomUUID().toString();
+        UUID membershipId = transactionTemplate.execute(status -> {
+            Identity identity = identityRepository.saveAndFlush(
+                    new Identity("concurrent-" + unique + "@example.com", "temporary-password-hash")
+            );
+            Tenant tenant = new Tenant("Concurrent Test Store", "concurrent-" + unique);
+            tenant.activate();
+            tenant = tenantRepository.saveAndFlush(tenant);
+            return membershipRepository.saveAndFlush(
+                    new TenantMembership(identity, tenant, TenantRole.TENANT_OWNER)
+            ).getId();
+        });
+        assertNotNull(membershipId);
+
+        String rawToken = transactionTemplate.execute(status -> {
+            TenantMembership membership = membershipRepository.findById(membershipId)
+                    .orElseThrow();
+            return tokenService.createToken(membership.getIdentity(), membership);
+        });
+        assertNotNull(rawToken);
+        UUID tokenId = tokenRepository.findByTokenHash(tokenService.hashToken(rawToken))
+                .orElseThrow().getId();
+
+        CompleteMerchantSetupRequest request =
+                new CompleteMerchantSetupRequest(rawToken, "SecurePassword123!");
+
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            java.util.concurrent.Callable<Boolean> attempt = () -> {
+                ready.countDown();
+                if (!start.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Timed out waiting to start activation");
+                }
+                try {
+                    activationService.completeSetup(request);
+                    return true;
+                } catch (IllegalArgumentException | IllegalStateException rejected) {
+                    return false;
+                }
+            };
+
+            Future<Boolean> first = executor.submit(attempt);
+            Future<Boolean> second = executor.submit(attempt);
+            assertTrue(ready.await(10, TimeUnit.SECONDS), "Both requests must be ready");
+            start.countDown();
+
+            boolean firstSucceeded = first.get(30, TimeUnit.SECONDS);
+            boolean secondSucceeded = second.get(30, TimeUnit.SECONDS);
+            assertEquals(1, (firstSucceeded ? 1 : 0) + (secondSucceeded ? 1 : 0),
+                    "Exactly one concurrent activation must succeed");
+        } finally {
+            start.countDown();
+            executor.shutdownNow();
+            assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS),
+                    "Activation worker threads should terminate");
+        }
+
+        transactionTemplate.executeWithoutResult(status -> {
+            TenantMembership membership = membershipRepository.findById(membershipId)
+                    .orElseThrow();
+            Identity identity = membership.getIdentity();
+            MerchantAccountSetupToken token = tokenRepository.findById(tokenId)
+                    .orElseThrow();
             assertEquals(IdentityStatus.ACTIVE, identity.getStatus());
             assertTrue(identity.isEmailVerified());
             assertEquals(TenantMembershipStatus.ACTIVE, membership.getStatus());
